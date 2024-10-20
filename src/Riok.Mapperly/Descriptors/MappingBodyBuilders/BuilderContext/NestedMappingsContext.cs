@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Riok.Mapperly.Abstractions;
 using Riok.Mapperly.Configuration;
 using Riok.Mapperly.Diagnostics;
 using Riok.Mapperly.Symbols.Members;
@@ -47,13 +48,13 @@ public class NestedMappingsContext
 
     public bool TryFindNestedSourcePath(
         IEnumerable<StringMemberPath> pathCandidates,
-        bool ignoreCase,
+        PropertyNameMappingStrategy nameMappingStrategy,
         [NotNullWhen(true)] out SourceMemberPath? sourceMemberPath
     )
     {
         foreach (var nestedMemberPath in _paths)
         {
-            if (TryFindNestedSourcePath(pathCandidates, ignoreCase, nestedMemberPath, out sourceMemberPath))
+            if (TryFindNestedSourcePath(pathCandidates, nameMappingStrategy, nestedMemberPath, out sourceMemberPath))
                 return true;
         }
 
@@ -63,7 +64,7 @@ public class NestedMappingsContext
 
     private bool TryFindNestedSourcePath(
         IEnumerable<StringMemberPath> pathCandidates,
-        bool ignoreCase,
+        PropertyNameMappingStrategy nameMappingStrategy,
         MemberPath nestedMemberPath,
         [NotNullWhen(true)] out SourceMemberPath? sourceMemberPath
     )
@@ -74,7 +75,7 @@ public class NestedMappingsContext
                 pathCandidates,
                 // Use empty ignore list to support ignoring a property for normal search while flattening its properties
                 Array.Empty<string>(),
-                ignoreCase,
+                nameMappingStrategy,
                 out var nestedSourceMemberPath
             )
         )

@@ -37,6 +37,15 @@ internal static class MembersMappingStateBuilder
         var targetMemberCaseMapping = targetMembers
             .Keys.GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+
+        var targetMemberUnderscoreMapping = targetMembers
+            .Keys.GroupBy(x => x, NameMappingStrategyComparer.UnderscoreIgnoreComparer)
+            .ToDictionary(x => x.Key, x => x.First(), NameMappingStrategyComparer.UnderscoreIgnoreComparer);
+
+        var targetMemberCaseUnderscoreMapping = targetMembers
+            .Keys.GroupBy(x => x, NameMappingStrategyComparer.CaseUnderscoreIgnoreComparer)
+            .ToDictionary(x => x.Key, x => x.First(), NameMappingStrategyComparer.CaseUnderscoreIgnoreComparer);
+
         var unmappedTargetMemberNames = targetMembers.Keys.ToHashSet();
         return new MembersMappingState(
             unmappedSourceMemberNames,
@@ -44,6 +53,8 @@ internal static class MembersMappingStateBuilder
             unmappedTargetMemberNames,
             additionalSourceMembers,
             targetMemberCaseMapping,
+            targetMemberUnderscoreMapping,
+            targetMemberCaseUnderscoreMapping,
             targetMembers,
             memberValueConfigsByRootTargetName,
             memberConfigsByRootTargetName,

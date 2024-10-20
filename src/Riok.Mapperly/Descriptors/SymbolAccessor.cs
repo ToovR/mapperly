@@ -265,7 +265,7 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
     internal bool TryFindMemberPath(
         IReadOnlyDictionary<string, IMappableMember> members,
         IEnumerable<StringMemberPath> pathCandidates,
-        bool ignoreCase,
+        PropertyNameMappingStrategy nameMappingStrategy,
         [NotNullWhen(true)] out MemberPath? memberPath
     )
     {
@@ -277,7 +277,7 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
 
             foundPath.Clear();
             foundPath.Add(member);
-            if (pathCandidate.Path.Count == 1 || TryFindPath(member.Type, pathCandidate.SkipRoot(), ignoreCase, foundPath))
+            if (pathCandidate.Path.Count == 1 || TryFindPath(member.Type, pathCandidate.SkipRoot(), nameMappingStrategy, foundPath))
             {
                 memberPath = new NonEmptyMemberPath(member.Type, foundPath);
                 return true;
@@ -292,7 +292,7 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
         ITypeSymbol type,
         IEnumerable<StringMemberPath> pathCandidates,
         IReadOnlyCollection<string> ignoredNames,
-        bool ignoreCase,
+        PropertyNameMappingStrategy nameMappingStrategy,
         [NotNullWhen(true)] out MemberPath? memberPath
     )
     {
@@ -305,7 +305,7 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
 
             // reuse List instead of allocating a new one
             foundPath.Clear();
-            if (!TryFindPath(type, pathCandidate, ignoreCase, foundPath))
+            if (!TryFindPath(type, pathCandidate, nameMappingStrategy, foundPath))
                 continue;
 
             // match again to respect ignoreCase parameter
@@ -357,7 +357,7 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
     internal bool TryFindMemberPath(ITypeSymbol type, StringMemberPath path, [NotNullWhen(true)] out MemberPath? memberPath)
     {
         var foundPath = new List<IMappableMember>();
-        if (TryFindPath(type, path, false, foundPath))
+        if (TryFindPath(type, path, PropertyNameMappingStrategy.CaseSensitive, foundPath))
         {
             memberPath = MemberPath.Create(type, foundPath);
             return true;
@@ -367,13 +367,18 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
         return false;
     }
 
-    private bool TryFindPath(ITypeSymbol type, StringMemberPath path, bool ignoreCase, ICollection<IMappableMember> foundPath)
+    private bool TryFindPath(
+        ITypeSymbol type,
+        StringMemberPath path,
+        PropertyNameMappingStrategy nameMappingStrategy,
+        ICollection<IMappableMember> foundPath
+    )
     {
         foreach (var name in path.Path)
         {
             // get T if type is Nullable<T>, prevents Value being treated as a member
             var actualType = type.NonNullableValueType() ?? type;
-            if (GetMappableMember(actualType, name, ignoreCase) is not { } member)
+            if (GetMappableMember(actualType, name, nameMappingStrategy) is not { } member)
                 return false;
 
             type = member.Type;
@@ -383,14 +388,21 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
         return true;
     }
 
-    public IMappableMember? GetMappableMember(ITypeSymbol symbol, string name, bool ignoreCase = false)
+    public IMappableMember? GetMappableMember(
+        ITypeSymbol symbol,
+        string name,
+        PropertyNameMappingStrategy nameMappingStrategy = PropertyNameMappingStrategy.CaseSensitive
+    )
     {
+        bool ignoreCase =
+            (nameMappingStrategy & PropertyNameMappingStrategy.CaseInsensitive) == PropertyNameMappingStrategy.CaseInsensitive;
         var membersBySymbol = ignoreCase ? _allAccessibleMembersCaseInsensitive : _allAccessibleMembersCaseSensitive;
 
         if (membersBySymbol.TryGetValue(symbol, out var symbolMembers))
             return symbolMembers.GetValueOrDefault(name);
 
-        var comparer = ignoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var comparer = new NameMappingStrategyComparer(nameMappingStrategy);
+
         membersBySymbol[symbol] = symbolMembers = GetAllAccessibleMappableMembers(symbol)
             .GroupBy(x => x.Name, comparer)
             .ToDictionary(x => x.Key, x => x.First(), comparer);

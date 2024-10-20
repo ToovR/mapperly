@@ -232,6 +232,59 @@ public class ObjectPropertyTest
     }
 
     [Fact]
+    public void WithPropertyNameMappingStrategyCaseSensitiveUnderscoreIgnore()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            "partial B Map(A source);",
+            new TestSourceBuilderOptions
+            {
+                PropertyNameMappingStrategy = PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore,
+            },
+            "class A { public string StringValue { get; set; } public int ValueInt { get; set; } }",
+            "class B { public string string_value { get; set; } public required int value_int { get; init; } }"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveSingleMethodBody(
+                """
+                var target = new global::B()
+                {
+                    value_int = source.ValueInt,
+                };
+                target.string_value = source.StringValue;
+                return target;
+                """
+            );
+    }
+
+    [Fact]
+    public void WithPropertyNameMappingStrategyUnderscoreIgnore()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            "partial B Map(A source);",
+            new TestSourceBuilderOptions { PropertyNameMappingStrategy = PropertyNameMappingStrategy.UnderscoreIgnore },
+            "class A { public string stringvalue { get; set; } public int valueint { get; set; } }",
+            "class B { public string string_value { get; set; } public required int value_int { get; init; } }"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveSingleMethodBody(
+                """
+                var target = new global::B()
+                {
+                    value_int = source.valueint,
+                };
+                target.string_value = source.stringvalue;
+                return target;
+                """
+            );
+    }
+
+    [Fact]
     public Task WithPropertyNameMappingStrategyCaseSensitive()
     {
         var source = TestSourceBuilder.MapperWithBodyAndTypes(
@@ -239,6 +292,8 @@ public class ObjectPropertyTest
             new TestSourceBuilderOptions { PropertyNameMappingStrategy = PropertyNameMappingStrategy.CaseSensitive },
             "class A { public string StringValue { get; set; } public int IntValue { get; set; } }",
             "class B { public string stringvalue { get; set; } public int IntValue { get; set; } }"
+        //"class A { public string StringValue { get; set; } public int IntValue { get; set; } public double DoubleValue { get; set; } public float FloatValue { get; set; } }",
+        //"class B { public string stringvalue { get; set; } public int IntValue { get; set; } public double Double_Value { get; set; } public float Float_Value { get; set; } }"
         );
 
         return TestHelper.VerifyGenerator(source);

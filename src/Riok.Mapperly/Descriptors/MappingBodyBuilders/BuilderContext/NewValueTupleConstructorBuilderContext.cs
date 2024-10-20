@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
+using Riok.Mapperly.Abstractions;
 using Riok.Mapperly.Configuration;
 using Riok.Mapperly.Descriptors.Mappings;
 using Riok.Mapperly.Descriptors.Mappings.MemberMappings;
@@ -56,11 +57,11 @@ public class NewValueTupleConstructorBuilderContext<T> : MembersMappingBuilderCo
 
     protected override bool TryFindSourcePath(
         IEnumerable<StringMemberPath> pathCandidates,
-        bool ignoreCase,
+        PropertyNameMappingStrategy mappingStrategy,
         [NotNullWhen(true)] out SourceMemberPath? sourceMemberPath
     )
     {
-        if (base.TryFindSourcePath(pathCandidates, ignoreCase, out sourceMemberPath))
+        if (base.TryFindSourcePath(pathCandidates, mappingStrategy, out sourceMemberPath))
             return true;
 
         if (TryFindSecondaryTupleSourceField(pathCandidates, out sourceMemberPath))

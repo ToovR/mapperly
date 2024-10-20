@@ -236,6 +236,55 @@ public class ObjectNestedPropertyTest
     }
 
     [Fact]
+    public void NestedPropertyWithMemberNameOfSourceAndCaseInsensitiveUnderscoreIgnoreNameMappingStrategy()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            "[MapNestedProperties(nameof(A.Value))] partial B Map(A source);",
+            new TestSourceBuilderOptions
+            {
+                PropertyNameMappingStrategy = PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore,
+            },
+            "class A { public C Value { get; set; } }",
+            "class B { public string name_id { get; set; } }",
+            "class C { public string NameId { get; set; } }"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveSingleMethodBody(
+                """
+                var target = new global::B();
+                target.name_id = source.Value.NameId;
+                return target;
+                """
+            );
+    }
+
+    [Fact]
+    public void NestedPropertyWithMemberNameOfSourceAndUnderscoreIgnoreNameMappingStrategy()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            "[MapNestedProperties(nameof(A.Value))] partial B Map(A source);",
+            new TestSourceBuilderOptions { PropertyNameMappingStrategy = PropertyNameMappingStrategy.UnderscoreIgnore },
+            "class A { public C Value { get; set; } }",
+            "class B { public string name_Id { get; set; } }",
+            "class C { public string nameId { get; set; } }"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveSingleMethodBody(
+                """
+                var target = new global::B();
+                target.name_Id = source.Value.nameId;
+                return target;
+                """
+            );
+    }
+
+    [Fact]
     public void NullableNestedPropertyWithMemberNameOfSource()
     {
         var source = TestSourceBuilder.MapperWithBodyAndTypes(

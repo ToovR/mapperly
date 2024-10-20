@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
+using Riok.Mapperly.Abstractions;
 using Riok.Mapperly.Descriptors.Mappings;
 using Riok.Mapperly.Descriptors.Mappings.MemberMappings;
 using Riok.Mapperly.Diagnostics;
@@ -33,7 +34,7 @@ public class NewInstanceBuilderContext<T>(MappingBuilderContext builderContext, 
         if (TryMatchMember(targetMember, out memberInfo))
             return true;
 
-        if (TryGetMemberConfigs(targetMember.Name, false, out var configs))
+        if (TryGetMemberConfigs(targetMember.Name, PropertyNameMappingStrategy.CaseSensitive, out var configs))
         {
             BuilderContext.ReportDiagnostic(
                 DiagnosticDescriptors.InitOnlyMemberDoesNotSupportPaths,
@@ -48,5 +49,9 @@ public class NewInstanceBuilderContext<T>(MappingBuilderContext builderContext, 
     }
 
     public bool TryMatchParameter(IParameterSymbol parameter, [NotNullWhen(true)] out MemberMappingInfo? memberInfo) =>
-        TryMatchMember(new ConstructorParameterMember(parameter, BuilderContext.SymbolAccessor), true, out memberInfo);
+        TryMatchMember(
+            new ConstructorParameterMember(parameter, BuilderContext.SymbolAccessor),
+            PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore,
+            out memberInfo
+        );
 }

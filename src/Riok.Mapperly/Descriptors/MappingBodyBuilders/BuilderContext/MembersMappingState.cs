@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Riok.Mapperly.Abstractions;
 using Riok.Mapperly.Configuration;
 using Riok.Mapperly.Descriptors.Mappings.MemberMappings;
 using Riok.Mapperly.Helpers;
@@ -14,6 +15,8 @@ namespace Riok.Mapperly.Descriptors.MappingBodyBuilders.BuilderContext;
 /// <param name="unmappedAdditionalSourceMemberNames">Additional source member names (additional mapping method parameters) which are not used in a member mapping yet.</param>
 /// <param name="unmappedTargetMemberNames">Target member names which are not used in a member mapping yet.</param>
 /// <param name="targetMemberCaseMapping">A dictionary with all members of the target with a case-insensitive key comparer.</param>
+/// <param name="targetMemberUnderscoreMapping">A dictionary with all members of the target with a underscore ignore key comparer</param>
+/// <param name="targetMemberCaseUnderscoreMapping">A dictionary with all members of the target with a underscore ignore and case-insensitive key comparer</param>
 /// <param name="targetMembers">All known target members.</param>
 /// <param name="memberValueConfigsByRootTargetName">All value configurations by root target member names, which are not yet consumed.</param>
 /// <param name="memberConfigsByRootTargetName">All configurations by root target member names, which are not yet consumed.</param>
@@ -24,6 +27,8 @@ internal class MembersMappingState(
     HashSet<string> unmappedTargetMemberNames,
     IReadOnlyDictionary<string, IMappableMember> additionalSourceMembers,
     IReadOnlyDictionary<string, string> targetMemberCaseMapping,
+    IReadOnlyDictionary<string, string> targetMemberUnderscoreMapping,
+    IReadOnlyDictionary<string, string> targetMemberCaseUnderscoreMapping,
     Dictionary<string, IMappableMember> targetMembers,
     Dictionary<string, List<MemberValueMappingConfiguration>> memberValueConfigsByRootTargetName,
     Dictionary<string, List<MemberMappingConfiguration>> memberConfigsByRootTargetName,
@@ -145,14 +150,21 @@ internal class MembersMappingState(
 
     public bool TryGetMemberConfigs(
         string targetMemberName,
-        bool ignoreCase,
+        PropertyNameMappingStrategy nameMappingStrategy,
         [NotNullWhen(true)] out IReadOnlyList<MemberMappingConfiguration>? memberConfigs
     )
     {
-        if (ignoreCase)
+        targetMemberName = nameMappingStrategy switch
         {
-            targetMemberName = targetMemberCaseMapping.GetValueOrDefault(targetMemberName, targetMemberName);
-        }
+            (PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore) =>
+                targetMemberCaseUnderscoreMapping.GetValueOrDefault(targetMemberName, targetMemberName),
+            PropertyNameMappingStrategy.UnderscoreIgnore => targetMemberUnderscoreMapping.GetValueOrDefault(
+                targetMemberName,
+                targetMemberName
+            ),
+            PropertyNameMappingStrategy.CaseInsensitive => targetMemberCaseMapping.GetValueOrDefault(targetMemberName, targetMemberName),
+            _ => targetMemberName,
+        };
 
         if (memberConfigsByRootTargetName.TryGetValue(targetMemberName, out var configs))
         {
@@ -166,14 +178,21 @@ internal class MembersMappingState(
 
     public bool TryGetMemberValueConfigs(
         string targetMemberName,
-        bool ignoreCase,
+        PropertyNameMappingStrategy nameMappingStrategy,
         [NotNullWhen(true)] out IReadOnlyList<MemberValueMappingConfiguration>? memberConfigs
     )
     {
-        if (ignoreCase)
+        targetMemberName = nameMappingStrategy switch
         {
-            targetMemberName = targetMemberCaseMapping.GetValueOrDefault(targetMemberName, targetMemberName);
-        }
+            (PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore) =>
+                targetMemberCaseUnderscoreMapping.GetValueOrDefault(targetMemberName, targetMemberName),
+            PropertyNameMappingStrategy.UnderscoreIgnore => targetMemberUnderscoreMapping.GetValueOrDefault(
+                targetMemberName,
+                targetMemberName
+            ),
+            PropertyNameMappingStrategy.CaseInsensitive => targetMemberCaseMapping.GetValueOrDefault(targetMemberName, targetMemberName),
+            _ => targetMemberName,
+        };
 
         if (memberValueConfigsByRootTargetName.TryGetValue(targetMemberName, out var configs))
         {
