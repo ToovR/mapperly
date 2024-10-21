@@ -1,4 +1,5 @@
 using Riok.Mapperly.Abstractions;
+using Riok.Mapperly.Helpers;
 
 namespace Riok.Mapperly.Symbols;
 
@@ -8,10 +9,16 @@ public class NameMappingStrategyComparer : StringComparer
     private readonly Func<string, string> _formatStringIgnoreUnderscore = (s) => s.Replace("_", string.Empty, StringComparison.Ordinal);
     private readonly StringComparison _stringComparison;
 
-    public static NameMappingStrategyComparer CaseUnderscoreIgnoreComparer { get; } =
-        new NameMappingStrategyComparer(PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore);
-    public static NameMappingStrategyComparer UnderscoreIgnoreComparer { get; } =
-        new NameMappingStrategyComparer(PropertyNameMappingStrategy.UnderscoreIgnore);
+    static NameMappingStrategyComparer()
+    {
+        var NameMappingStrategies = PropertyNameMappingUtil.GetNameMappingStrategyCombinations();
+        NameMappingComparers = NameMappingStrategies.ToDictionary(
+            nameMapping => nameMapping,
+            nameMapping => new NameMappingStrategyComparer(nameMapping)
+        );
+    }
+
+    public static IDictionary<PropertyNameMappingStrategy, NameMappingStrategyComparer> NameMappingComparers { get; }
 
     public NameMappingStrategyComparer(PropertyNameMappingStrategy nameMappingStrategy)
     {
@@ -37,6 +44,6 @@ public class NameMappingStrategyComparer : StringComparer
 
     public override int GetHashCode(string obj)
     {
-        return _stringComparison.GetHashCode();
+        return HashCode.Combine(_formatString.GetHashCode(), _stringComparison.GetHashCode());
     }
 }

@@ -63,7 +63,7 @@ public class NewInstanceContainerBuilderContext<T>(MappingBuilderContext builder
     public bool TryMatchParameter(IParameterSymbol parameter, [NotNullWhen(true)] out MemberMappingInfo? memberInfo) =>
         TryMatchMember(
             new ConstructorParameterMember(parameter, BuilderContext.SymbolAccessor),
-            PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore,
+            PropertyNameMappingStrategy.CaseInsensitive,
             out memberInfo
         );
 }

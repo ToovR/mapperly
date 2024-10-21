@@ -48,4 +48,20 @@ public static class EnumerableExtensions
 
         return result ?? throw new InvalidOperationException("Aggregation was not initialized");
     }
+
+    public static IEnumerable<IEnumerable<TType>> GetCombinations<TType>(this IEnumerable<TType> list)
+        where TType : IComparable
+    {
+        return Enumerable.Range(1, list.Count()).SelectMany(length => GetCombinations(list, length));
+    }
+
+    private static IEnumerable<IEnumerable<TType>> GetCombinations<TType>(IEnumerable<TType> list, int length)
+        where TType : IComparable
+    {
+        if (length == 1)
+            return list.Select(t => new TType[] { t });
+        if (length == list.Count())
+            return [list];
+        return GetCombinations(list, length - 1).SelectMany(t => list.Where(o => o.CompareTo(t.Last()) > 0), (t1, t2) => t1.Concat([t2]));
+    }
 }

@@ -289,11 +289,6 @@ public abstract class MembersMappingBuilderContext<T>(MappingBuilderContext buil
 
     private MemberMappingInfo? TryGetMemberConfigMappingInfo(IMappableMember targetMember, PropertyNameMappingStrategy nameMappingStrategy)
     {
-        bool ignoreCase =
-            (nameMappingStrategy & PropertyNameMappingStrategy.CaseInsensitive) == PropertyNameMappingStrategy.CaseInsensitive;
-        bool ignoreUnderscore =
-            (nameMappingStrategy & PropertyNameMappingStrategy.UnderscoreIgnore) == PropertyNameMappingStrategy.UnderscoreIgnore;
-
         if (TryGetMemberConfigs(targetMember.Name, PropertyNameMappingStrategy.CaseSensitive, out var memberConfigs))
         {
             var memberConfig = memberConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
@@ -303,38 +298,23 @@ public abstract class MembersMappingBuilderContext<T>(MappingBuilderContext buil
             }
         }
 
-        if (ignoreCase && TryGetMemberConfigs(targetMember.Name, PropertyNameMappingStrategy.CaseInsensitive, out memberConfigs))
-        {
-            var memberConfig = memberConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
-            if (memberConfig != null && ResolveMemberConfigSourcePath(memberConfig, out var sourceMember))
-            {
-                return new MemberMappingInfo(sourceMember, new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberConfig);
-            }
-        }
+        if (nameMappingStrategy == PropertyNameMappingStrategy.CaseSensitive)
+            return null;
 
-        if (ignoreUnderscore && TryGetMemberConfigs(targetMember.Name, PropertyNameMappingStrategy.UnderscoreIgnore, out memberConfigs))
-        {
-            var memberConfig = memberConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
-            if (memberConfig != null && ResolveMemberConfigSourcePath(memberConfig, out var sourceMember))
-            {
-                return new MemberMappingInfo(sourceMember, new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberConfig);
-            }
-        }
+        var propertyNameMappingStrategyCombinations = PropertyNameMappingUtil.GetNameMappingStrategyCombinations();
 
-        if (
-            ignoreCase
-            && ignoreUnderscore
-            && TryGetMemberConfigs(
-                targetMember.Name,
-                PropertyNameMappingStrategy.CaseSensitive | PropertyNameMappingStrategy.UnderscoreIgnore,
-                out memberConfigs
+        foreach (var mappingStrategyCombination in propertyNameMappingStrategyCombinations)
+        {
+            if (
+                ((nameMappingStrategy & mappingStrategyCombination) == mappingStrategyCombination)
+                && TryGetMemberConfigs(targetMember.Name, mappingStrategyCombination, out memberConfigs)
             )
-        )
-        {
-            var memberConfig = memberConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
-            if (memberConfig != null && ResolveMemberConfigSourcePath(memberConfig, out var sourceMember))
             {
-                return new MemberMappingInfo(sourceMember, new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberConfig);
+                var memberConfig = memberConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
+                if (memberConfig != null && ResolveMemberConfigSourcePath(memberConfig, out var sourceMember))
+                {
+                    return new MemberMappingInfo(sourceMember, new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberConfig);
+                }
             }
         }
         return null;
@@ -368,11 +348,6 @@ public abstract class MembersMappingBuilderContext<T>(MappingBuilderContext buil
 
     private MemberMappingInfo? TryGetMemberValueMappingInfo(IMappableMember targetMember, PropertyNameMappingStrategy nameMappingStrategy)
     {
-        bool ignoreCase =
-            (nameMappingStrategy & PropertyNameMappingStrategy.CaseInsensitive) == PropertyNameMappingStrategy.CaseInsensitive;
-        bool ignoreUnderscore =
-            (nameMappingStrategy & PropertyNameMappingStrategy.UnderscoreIgnore) == PropertyNameMappingStrategy.UnderscoreIgnore;
-
         if (TryGetMemberValueConfigs(targetMember.Name, PropertyNameMappingStrategy.CaseSensitive, out var memberValueConfigs))
         {
             var memberValueConfig = memberValueConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
@@ -382,43 +357,26 @@ public abstract class MembersMappingBuilderContext<T>(MappingBuilderContext buil
             }
         }
 
-        if (ignoreCase && TryGetMemberValueConfigs(targetMember.Name, PropertyNameMappingStrategy.CaseInsensitive, out memberValueConfigs))
-        {
-            var memberValueConfig = memberValueConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
-            if (memberValueConfig != null)
-            {
-                return new MemberMappingInfo(new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberValueConfig);
-            }
-        }
+        if (nameMappingStrategy == PropertyNameMappingStrategy.CaseSensitive)
+            return null;
 
-        if (
-            ignoreUnderscore
-            && TryGetMemberValueConfigs(targetMember.Name, PropertyNameMappingStrategy.UnderscoreIgnore, out memberValueConfigs)
-        )
-        {
-            var memberValueConfig = memberValueConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
-            if (memberValueConfig != null)
-            {
-                return new MemberMappingInfo(new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberValueConfig);
-            }
-        }
+        var propertyNameMappingStrategyCombinations = PropertyNameMappingUtil.GetNameMappingStrategyCombinations();
 
-        if (
-            ignoreCase
-            && ignoreUnderscore
-            && TryGetMemberValueConfigs(
-                targetMember.Name,
-                PropertyNameMappingStrategy.CaseInsensitive | PropertyNameMappingStrategy.UnderscoreIgnore,
-                out memberValueConfigs
+        foreach (var mappingStrategyCombination in propertyNameMappingStrategyCombinations)
+        {
+            if (
+                ((nameMappingStrategy & mappingStrategyCombination) == mappingStrategyCombination)
+                && TryGetMemberValueConfigs(targetMember.Name, nameMappingStrategy, out memberValueConfigs)
             )
-        )
-        {
-            var memberValueConfig = memberValueConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
-            if (memberValueConfig != null)
             {
-                return new MemberMappingInfo(new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberValueConfig);
+                var memberValueConfig = memberValueConfigs.FirstOrDefault(x => x.Target.PathCount == 1);
+                if (memberValueConfig != null)
+                {
+                    return new MemberMappingInfo(new NonEmptyMemberPath(BuilderContext.Target, [targetMember]), memberValueConfig);
+                }
             }
         }
+
         return null;
     }
 }

@@ -34,17 +34,14 @@ internal static class MembersMappingStateBuilder
         unmappedSourceMemberNames.ExceptWith(ignoredSourceMemberNames);
         targetMembers.RemoveRange(ignoredTargetMemberNames);
 
-        var targetMemberCaseMapping = targetMembers
-            .Keys.GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
-
-        var targetMemberUnderscoreMapping = targetMembers
-            .Keys.GroupBy(x => x, NameMappingStrategyComparer.UnderscoreIgnoreComparer)
-            .ToDictionary(x => x.Key, x => x.First(), NameMappingStrategyComparer.UnderscoreIgnoreComparer);
-
-        var targetMemberCaseUnderscoreMapping = targetMembers
-            .Keys.GroupBy(x => x, NameMappingStrategyComparer.CaseUnderscoreIgnoreComparer)
-            .ToDictionary(x => x.Key, x => x.First(), NameMappingStrategyComparer.CaseUnderscoreIgnoreComparer);
+        var mappings = PropertyNameMappingUtil.GetNameMappingStrategyCombinations();
+        var targetMemberCaseMappings = mappings.ToDictionary(
+            m => m,
+            m =>
+                targetMembers
+                    .Keys.GroupBy(x => x, NameMappingStrategyComparer.NameMappingComparers[m])
+                    .ToDictionary(x => x.Key, x => x.First(), NameMappingStrategyComparer.NameMappingComparers[m])
+        );
 
         var unmappedTargetMemberNames = targetMembers.Keys.ToHashSet();
         return new MembersMappingState(
@@ -52,9 +49,7 @@ internal static class MembersMappingStateBuilder
             unmappedAdditionalSourceMemberNames,
             unmappedTargetMemberNames,
             additionalSourceMembers,
-            targetMemberCaseMapping,
-            targetMemberUnderscoreMapping,
-            targetMemberCaseUnderscoreMapping,
+            targetMemberCaseMappings,
             targetMembers,
             memberValueConfigsByRootTargetName,
             memberConfigsByRootTargetName,

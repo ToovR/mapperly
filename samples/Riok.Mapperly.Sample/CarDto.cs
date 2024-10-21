@@ -12,7 +12,7 @@ public class CarDto
 
     public List<TireDto>? Tires { get; set; }
 
-    public string SerialNumber { get; set; }
+    public string SerialNumber { get; set; } = string.Empty;
 }
 
 // Intentionally use different numeric values for demonstration purposes
