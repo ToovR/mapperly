@@ -6,6 +6,8 @@ public class Car
 
     public int NumberOfSeats { get; set; }
 
+    public string serial_number { get; set; }
+
     public CarColor Color { get; set; }
 
     public Manufacturer? Manufacturer { get; set; }

@@ -11,6 +11,8 @@ public class CarDto
     public ProducerDto? Producer { get; set; }
 
     public List<TireDto>? Tires { get; set; }
+
+    public string SerialNumber { get; set; }
 }
 
 // Intentionally use different numeric values for demonstration purposes
