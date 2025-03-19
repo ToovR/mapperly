@@ -442,7 +442,12 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
         }
     }
 
-    private bool TryFindPath(ITypeSymbol type, StringMemberPath path, bool ignoreCase, ICollection<IMappableMember> foundPath)
+    private bool TryFindPath(
+        ITypeSymbol type,
+        StringMemberPath path,
+        PropertyNameMappingStrategy nameMappingStrategy,
+        ICollection<IMappableMember> foundPath
+    )
     {
         foreach (var name in path.Path)
         {
