@@ -15,7 +15,8 @@ public class MapperConfigurationReader
         AttributeDataAccessor dataAccessor,
         WellKnownTypes types,
         ISymbol mapperSymbol,
-        MapperConfiguration defaultMapperConfiguration
+        MapperConfiguration defaultMapperConfiguration,
+        SupportedFeatures supportedFeatures
     )
     {
         _dataAccessor = dataAccessor;
@@ -33,25 +34,38 @@ public class MapperConfigurationReader
                 [],
                 [],
                 [],
-                mapper.RequiredMappingStrategy,
+                mapper.RequiredEnumMappingStrategy,
                 mapper.EnumNamingStrategy
             ),
             new MembersMappingConfiguration([], [], [], [], [], mapper.IgnoreObsoleteMembersStrategy, mapper.RequiredMappingStrategy),
-            []
+            [],
+            mapper.UseDeepCloning,
+            supportedFeatures
         );
     }
 
     public MappingConfiguration MapperConfiguration { get; }
 
-    public MappingConfiguration BuildFor(MappingConfigurationReference reference, DiagnosticCollection diagnostics)
+    public MappingConfiguration BuildFor(
+        MappingConfigurationReference reference,
+        bool supportsDeepCloning,
+        DiagnosticCollection diagnostics
+    )
     {
         if (reference.Method == null)
-            return MapperConfiguration;
+            return supportsDeepCloning ? MapperConfiguration : MapperConfiguration with { UseDeepCloning = false };
 
         var enumConfig = BuildEnumConfig(reference, diagnostics);
         var membersConfig = BuildMembersConfig(reference, diagnostics);
         var derivedTypesConfig = BuildDerivedTypeConfigs(reference.Method);
-        return new MappingConfiguration(MapperConfiguration.Mapper, enumConfig, membersConfig, derivedTypesConfig);
+        return new MappingConfiguration(
+            MapperConfiguration.Mapper,
+            enumConfig,
+            membersConfig,
+            derivedTypesConfig,
+            supportsDeepCloning && MapperConfiguration.Mapper.UseDeepCloning,
+            MapperConfiguration.SupportedFeatures
+        );
     }
 
     private IReadOnlyCollection<DerivedTypeMappingConfiguration> BuildDerivedTypeConfigs(IMethodSymbol method)

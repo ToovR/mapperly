@@ -8,8 +8,10 @@ namespace Riok.Mapperly.Tests;
 
 public static class TestHelper
 {
-    private static readonly GeneratorDriverOptions _enableIncrementalTrackingDriverOptions =
-        new(IncrementalGeneratorOutputKind.None, trackIncrementalGeneratorSteps: true);
+    private static readonly GeneratorDriverOptions _enableIncrementalTrackingDriverOptions = new(
+        IncrementalGeneratorOutputKind.None,
+        trackIncrementalGeneratorSteps: true
+    );
 
     public static Task<VerifyResult> VerifyGenerator(string source, TestHelperOptions? options = null, params object?[] args)
     {
@@ -77,7 +79,7 @@ public static class TestHelper
         return driver.RunGenerators(compilation);
     }
 
-    public static Compilation BuildCompilation([StringSyntax(StringSyntax.CSharp)] string source, TestHelperOptions? options)
+    public static CSharpCompilation BuildCompilation([StringSyntax(StringSyntax.CSharp)] string source, TestHelperOptions? options)
     {
         options ??= TestHelperOptions.Default;
         var syntaxTree = CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithLanguageVersion(options.LanguageVersion));

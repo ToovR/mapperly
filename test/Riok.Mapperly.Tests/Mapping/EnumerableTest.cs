@@ -17,8 +17,13 @@ public class EnumerableTest
     {
         var source = TestSourceBuilder.Mapping("int[]?", "int[]");
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceTypeToNonNullableTargetType,
+                "Mapping the nullable source of type int[]? to target of type int[] which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody("return source ?? throw new System.ArgumentNullException(nameof(source));");
     }
 
@@ -27,8 +32,13 @@ public class EnumerableTest
     {
         var source = TestSourceBuilder.Mapping("int?[]", "int[]");
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceTypeToNonNullableTargetType,
+                "Mapping the nullable source of type int? to target of type int which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new int[source.Length];
@@ -72,8 +82,13 @@ public class EnumerableTest
     {
         var source = TestSourceBuilder.Mapping("B?[]", "B[]", "class B { public int Value { get; set; } }");
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceTypeToNonNullableTargetType,
+                "Mapping the nullable source of type B? to target of type B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new global::B[source.Length];
@@ -705,6 +720,20 @@ public class EnumerableTest
         var source = TestSourceBuilder.Mapping(
             "IReadOnlyList<IReadOnlyCollection<IReadOnlyList<int>>>",
             "IReadOnlyList<IReadOnlyCollection<IReadOnlyList<string>>>"
+        );
+
+        return TestHelper.VerifyGenerator(source);
+    }
+
+    [Fact]
+    public Task NullableElementMappingWithPrivateConstructorShouldDiagnostic()
+    {
+        var source = TestSourceBuilder.Mapping(
+            "A",
+            "B",
+            "class A { public IEnumerable<int> Value { get; } }",
+            "class B { public List<C?> Value { get; set; } }",
+            "class C { private C() {} }"
         );
 
         return TestHelper.VerifyGenerator(source);

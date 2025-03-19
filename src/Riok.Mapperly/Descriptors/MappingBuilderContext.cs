@@ -16,8 +16,6 @@ namespace Riok.Mapperly.Descriptors;
 public class MappingBuilderContext : SimpleMappingBuilderContext
 {
     private readonly FormatProviderCollection _formatProviders;
-    private CollectionInfos? _collectionInfos;
-    private DictionaryInfos? _dictionaryInfos;
 
     public MappingBuilderContext(
         SimpleMappingBuilderContext parentCtx,
@@ -25,7 +23,8 @@ public class MappingBuilderContext : SimpleMappingBuilderContext
         FormatProviderCollection formatProviders,
         IUserMapping? userMapping,
         TypeMappingKey mappingKey,
-        Location? diagnosticLocation = null
+        Location? diagnosticLocation = null,
+        bool supportsDeepCloning = true
     )
         : base(parentCtx, diagnosticLocation ?? userMapping?.Method.GetSyntaxLocation())
     {
@@ -33,7 +32,10 @@ public class MappingBuilderContext : SimpleMappingBuilderContext
         _formatProviders = formatProviders;
         UserMapping = userMapping;
         MappingKey = mappingKey;
-        Configuration = ReadConfiguration(new MappingConfigurationReference(UserSymbol, mappingKey.Source, mappingKey.Target));
+        Configuration = ReadConfiguration(
+            new MappingConfigurationReference(UserSymbol, mappingKey.Source, mappingKey.Target),
+            supportsDeepCloning
+        );
     }
 
     protected MappingBuilderContext(
@@ -41,9 +43,18 @@ public class MappingBuilderContext : SimpleMappingBuilderContext
         IUserMapping? userMapping,
         Location? diagnosticLocation,
         TypeMappingKey mappingKey,
-        bool ignoreDerivedTypes
+        bool ignoreDerivedTypes,
+        bool supportsDeepCloning = true
     )
-        : this(ctx, ctx.InstanceConstructors, ctx._formatProviders, userMapping, mappingKey, diagnosticLocation)
+        : this(
+            ctx,
+            ctx.InstanceConstructors,
+            ctx._formatProviders,
+            userMapping,
+            mappingKey,
+            diagnosticLocation,
+            supportsDeepCloning: supportsDeepCloning
+        )
     {
         if (ignoreDerivedTypes)
         {
@@ -57,9 +68,9 @@ public class MappingBuilderContext : SimpleMappingBuilderContext
 
     public ITypeSymbol Target => MappingKey.Target;
 
-    public CollectionInfos? CollectionInfos => _collectionInfos ??= CollectionInfoBuilder.Build(Types, SymbolAccessor, Source, Target);
+    public CollectionInfos? CollectionInfos => field ??= CollectionInfoBuilder.Build(Types, SymbolAccessor, Source, Target);
 
-    public DictionaryInfos? DictionaryInfos => _dictionaryInfos ??= DictionaryInfoBuilder.Build(Types, CollectionInfos);
+    public DictionaryInfos? DictionaryInfos => field ??= DictionaryInfoBuilder.Build(Types, CollectionInfos);
 
     public IUserMapping? UserMapping { get; }
 
@@ -154,13 +165,15 @@ public class MappingBuilderContext : SimpleMappingBuilderContext
         Location? diagnosticLocation = null
     )
     {
-        return FindMapping(mappingKey) ?? BuildMapping(mappingKey, options, diagnosticLocation);
+        return FindMapping(mappingKey)
+            ?? FindMapping(mappingKey.TargetNonNullable())
+            ?? BuildMapping(mappingKey, options, diagnosticLocation);
     }
 
     /// <summary>
     /// Finds or builds a mapping (<seealso cref="FindOrBuildMapping(Riok.Mapperly.Descriptors.TypeMappingKey,Riok.Mapperly.Descriptors.MappingBuildingOptions,Location)"/>).
     /// Before a new mapping is built existing mappings are tried to be found by the following priorities:
-    /// 1. exact match
+    /// 1. user mapping with exact type match
     /// 2. ignoring the nullability of the source and the target (needs to be handled by the caller of this method)
     /// If no mapping can be found a new mapping is built with the source and the target as non-nullables.
     /// </summary>
@@ -174,7 +187,7 @@ public class MappingBuilderContext : SimpleMappingBuilderContext
         Location? diagnosticLocation = null
     )
     {
-        if (FindMapping(key) is { } mapping)
+        if (FindMapping(key) is INewInstanceUserMapping mapping)
             return mapping;
 
         // if a user mapping is referenced
@@ -240,6 +253,23 @@ public class MappingBuilderContext : SimpleMappingBuilderContext
     )
     {
         return ExistingTargetMappingBuilder.Find(mappingKey) ?? BuildExistingTargetMapping(mappingKey, options);
+    }
+
+    /// <summary>
+    /// Tries to find an existing mapping with the provided name.
+    /// If none is found, <c>null</c> is returned.
+    /// </summary>
+    /// <param name="mappingName">The name of the mapping.</param>
+    /// <returns>The found mapping, or <c>null</c> if none is found.</returns>
+    public IExistingTargetMapping? FindExistingTargetNamedMapping(string mappingName)
+    {
+        var mapping = ExistingTargetMappingBuilder.FindOrResolveNamed(this, mappingName, out var ambiguousName);
+        if (ambiguousName)
+        {
+            ReportDiagnostic(DiagnosticDescriptors.ReferencedMappingAmbiguous, mappingName);
+        }
+
+        return mapping;
     }
 
     /// <summary>

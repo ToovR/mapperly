@@ -12,11 +12,26 @@ public partial struct SyntaxFactoryHelper
 {
     private static readonly IdentifierNameSyntax _nameofIdentifier = IdentifierName("nameof");
 
-    private static readonly Regex _formattableStringPlaceholder =
-        new(@"\{(?<placeholder>\d+)\}", RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex _formattableStringPlaceholder = new(
+        @"\{(?<placeholder>\d+)\}",
+        RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(100)
+    );
 
-    public static InvocationExpressionSyntax NameOf(ExpressionSyntax expression) =>
-        InvocationWithoutIndention(_nameofIdentifier, expression);
+    public static InvocationExpressionSyntax NameOf(ExpressionSyntax expression)
+    {
+        while (expression is ElementAccessExpressionSyntax elementAccess)
+        {
+            expression = elementAccess.Expression;
+        }
+
+        return InvocationWithoutIndention(_nameofIdentifier, expression);
+    }
+
+    private ExpressionSyntax ParameterNameOfOrStringLiteral(ExpressionSyntax expression)
+    {
+        return supportedFeatures.NameOfParameter ? NameOf(expression) : StringLiteral(expression.ToFullString());
+    }
 
     public static IdentifierNameSyntax FullyQualifiedIdentifier(ITypeSymbol typeSymbol) =>
         IdentifierName(typeSymbol.FullyQualifiedIdentifierName());

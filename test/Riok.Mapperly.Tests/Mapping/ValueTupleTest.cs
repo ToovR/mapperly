@@ -380,8 +380,7 @@ public class ValueTupleTest
             .HaveDiagnostic(DiagnosticDescriptors.NoConstructorFound)
             .HaveSingleMethodBody(
                 """
-                // Could not generate mapping
-                throw new System.NotImplementedException();
+                throw new System.NotImplementedException("Mapperly: Could not generate mapping");
                 """
             );
     }
@@ -407,8 +406,7 @@ public class ValueTupleTest
             .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
-                // Could not generate mapping
-                throw new System.NotImplementedException();
+                throw new System.NotImplementedException("Mapperly: Could not generate mapping");
                 """
             );
     }
@@ -431,8 +429,7 @@ public class ValueTupleTest
             .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
-                // Could not generate mapping
-                throw new System.NotImplementedException();
+                throw new System.NotImplementedException("Mapperly: Could not generate mapping");
                 """
             );
     }
@@ -628,31 +625,6 @@ public class ValueTupleTest
     }
 
     [Fact]
-    public void TupleToTupleWithManyMapPropertyShouldDiagnostic()
-    {
-        var source = TestSourceBuilder.MapperWithBodyAndTypes(
-            """
-            [MapProperty("B", "A")]
-            [MapProperty("Item1", "A")]
-            partial (int A, int) Map((int, string B) source);
-            """
-        );
-
-        TestHelper
-            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
-            .Should()
-            .HaveDiagnostic(
-                DiagnosticDescriptors.SourceMemberNotMapped,
-                "The member Item1 on the mapping source type (int, string B) is not mapped to any member on the mapping target type (int A, int)"
-            )
-            .HaveDiagnostic(
-                DiagnosticDescriptors.MultipleConfigurationsForTargetMember,
-                "Multiple mappings are configured for the same target member (int A, int).A"
-            )
-            .HaveAssertedAllDiagnostics();
-    }
-
-    [Fact]
     public void TupleToTupleWithMapPropertyWithImplicitNameShouldDiagnostic()
     {
         var source = TestSourceBuilder.MapperWithBodyAndTypes(
@@ -699,8 +671,7 @@ public class ValueTupleTest
             .HaveDiagnostic(DiagnosticDescriptors.CouldNotCreateMapping)
             .HaveSingleMethodBody(
                 """
-                // Could not generate mapping
-                throw new System.NotImplementedException();
+                throw new System.NotImplementedException("Mapperly: Could not generate mapping");
                 """
             );
     }
@@ -716,8 +687,7 @@ public class ValueTupleTest
             .HaveDiagnostic(DiagnosticDescriptors.SourceMemberNotFound)
             .HaveSingleMethodBody(
                 """
-                // Could not generate mapping
-                throw new System.NotImplementedException();
+                throw new System.NotImplementedException("Mapperly: Could not generate mapping");
                 """
             );
     }

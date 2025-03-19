@@ -15,8 +15,8 @@ namespace Riok.Mapperly.Descriptors;
 /// </summary>
 public class InlineExpressionMappingBuilderContext : MappingBuilderContext
 {
-    public InlineExpressionMappingBuilderContext(MappingBuilderContext ctx, TypeMappingKey mappingKey)
-        : base(ctx, ctx.FindMapping(mappingKey) as IUserMapping, null, mappingKey, false) { }
+    public InlineExpressionMappingBuilderContext(MappingBuilderContext ctx, IUserMapping? userMapping, TypeMappingKey mappingKey)
+        : base(ctx, userMapping, null, mappingKey, ignoreDerivedTypes: false, supportsDeepCloning: false) { }
 
     private InlineExpressionMappingBuilderContext(
         InlineExpressionMappingBuilderContext ctx,
@@ -25,7 +25,7 @@ public class InlineExpressionMappingBuilderContext : MappingBuilderContext
         TypeMappingKey mappingKey,
         bool ignoreDerivedTypes
     )
-        : base(ctx, userMapping, diagnosticLocation, mappingKey, ignoreDerivedTypes) { }
+        : base(ctx, userMapping, diagnosticLocation, mappingKey, ignoreDerivedTypes, supportsDeepCloning: false) { }
 
     public override bool IsExpression => true;
 

@@ -20,17 +20,25 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
     private readonly ConditionalWeakTable<ITypeSymbol, ITypeSymbol> _originalNullableTypes = new();
     private readonly Dictionary<ISymbol, ImmutableArray<AttributeData>> _attributes = new(SymbolEqualityComparer.Default);
     private readonly Dictionary<ITypeSymbol, IReadOnlyCollection<ISymbol>> _allMembers = new(SymbolEqualityComparer.Default);
-    private readonly Dictionary<ITypeSymbol, IReadOnlyCollection<IMappableMember>> _allAccessibleMembers =
-        new(SymbolEqualityComparer.Default);
-    private readonly Dictionary<ITypeSymbol, IReadOnlyDictionary<string, IMappableMember>> _allAccessibleMembersCaseInsensitive =
-        new(SymbolEqualityComparer.Default);
-    private readonly Dictionary<ITypeSymbol, IReadOnlyDictionary<string, IMappableMember>> _allAccessibleMembersCaseSensitive =
-        new(SymbolEqualityComparer.Default);
+    private readonly Dictionary<ITypeSymbol, IReadOnlyCollection<IMappableMember>> _allAccessibleMembers = new(
+        SymbolEqualityComparer.Default
+    );
+    private readonly Dictionary<ITypeSymbol, IReadOnlyDictionary<string, IMappableMember>> _allAccessibleMembersCaseInsensitive = new(
+        SymbolEqualityComparer.Default
+    );
+    private readonly Dictionary<ITypeSymbol, IReadOnlyDictionary<string, IMappableMember>> _allAccessibleMembersCaseSensitive = new(
+        SymbolEqualityComparer.Default
+    );
 
     private MemberVisibility _memberVisibility = MemberVisibility.AllAccessible;
     private MemberVisibility _constructorVisibility = MemberVisibility.AllAccessible;
 
     private Compilation Compilation => compilationContext.Compilation;
+
+    private readonly Lazy<INamedTypeSymbol> _lazyEnumerableType = new(
+        () => compilationContext.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T)
+    );
+    private INamedTypeSymbol EnumerableTypeSymbol => _lazyEnumerableType.Value;
 
     internal void SetMemberVisibility(MemberVisibility visibility) => _memberVisibility = visibility;
 
@@ -188,15 +196,24 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
     }
 
     internal IEnumerable<AttributeData> GetAttributes<T>(ISymbol symbol)
+        where T : Attribute => GetAttributes<T>(GetAttributesCore(symbol));
+
+    internal IEnumerable<AttributeData> TryGetAttributes<T>(IEnumerable<AttributeData> attributes)
         where T : Attribute
     {
-        var attributes = GetAttributesCore(symbol);
-        if (attributes.IsEmpty)
-        {
-            yield break;
-        }
+        var attributeSymbol = compilationContext.Types.TryGet(typeof(T).FullName ?? "<unknown>");
+        return attributeSymbol == null ? [] : GetAttributes(attributeSymbol, attributes);
+    }
 
+    internal IEnumerable<AttributeData> GetAttributes<T>(IEnumerable<AttributeData> attributes)
+        where T : Attribute
+    {
         var attributeSymbol = compilationContext.Types.Get<T>();
+        return GetAttributes(attributeSymbol, attributes);
+    }
+
+    internal IEnumerable<AttributeData> GetAttributes(ITypeSymbol attributeSymbol, IEnumerable<AttributeData> attributes)
+    {
         foreach (var attr in attributes)
         {
             if (SymbolEqualityComparer.Default.Equals(attr.AttributeClass?.ConstructedFrom ?? attr.AttributeClass, attributeSymbol))
@@ -219,6 +236,9 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
 
     internal bool HasAttribute<T>(ISymbol symbol)
         where T : Attribute => GetAttributes<T>(symbol).Any();
+
+    internal bool TryHasAttribute<T>(IEnumerable<AttributeData> symbol)
+        where T : Attribute => TryGetAttributes<T>(symbol).Any();
 
     internal IEnumerable<IMethodSymbol> GetAllMethods(ITypeSymbol symbol) => GetAllMembers(symbol).OfType<IMethodSymbol>();
 
@@ -277,11 +297,11 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
 
             foundPath.Clear();
             foundPath.Add(member);
-            if (pathCandidate.Path.Count == 1 || TryFindPath(member.Type, pathCandidate.SkipRoot(), nameMappingStrategy, foundPath))
-            {
-                memberPath = new NonEmptyMemberPath(member.Type, foundPath);
-                return true;
-            }
+            if (pathCandidate.Path.Count != 1 && !TryFindPath(member.Type, pathCandidate.SkipRoot(), nameMappingStrategy, foundPath))
+                continue;
+
+            memberPath = new NonEmptyMemberPath(member.Type, foundPath);
+            return true;
         }
 
         memberPath = null;
@@ -367,12 +387,62 @@ public class SymbolAccessor(CompilationContext compilationContext, INamedTypeSym
         return false;
     }
 
-    private bool TryFindPath(
-        ITypeSymbol type,
-        StringMemberPath path,
-        PropertyNameMappingStrategy nameMappingStrategy,
-        ICollection<IMappableMember> foundPath
-    )
+    /// <summary>
+    ///     Checks that the specified method returns a type that can be assigned to the specified result type,
+    ///     and that the specified arguments can be passed to the method.
+    ///     The check takes into account the possibility of assignment to a method with an argument marked with the <see langword="params"/> keyword
+    /// </summary>
+    /// <param name="method">Method for validate</param>
+    /// <param name="returnType">Target return type</param>
+    /// <param name="argTypes">Target method arguments</param>
+    /// <returns></returns>
+    internal bool ValidateSignature(IMethodSymbol method, ITypeSymbol returnType, params ITypeSymbol[] argTypes)
+    {
+        return CanAssign(method.ReturnType, returnType) && Enumerable.Range(0, method.Parameters.Length).All(IsValidParameter);
+
+        bool IsValidParameter(int i)
+        {
+            if (method.Parameters[i] is not { IsParams: true } isParamsParameter)
+            {
+                return CanAssign(argTypes[i], method.Parameters[i].Type);
+            }
+
+            // see https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/method-parameters#params-modifier
+
+            var argsToEnd = argTypes.AsSpan(i);
+
+            // for empty args aka Call(params X[]) as Call()
+            if (argsToEnd.IsEmpty)
+            {
+                return true;
+            }
+
+            var elementType = isParamsParameter.Type.ImplementsGeneric(EnumerableTypeSymbol, out var impl)
+                // for assignable to IEnumerable<T>
+                ? impl.TypeArguments.First()
+                // for Span<T> and ReadOnlySpan<T>
+                : ((INamedTypeSymbol)method.Parameters[i].Type).TypeArguments.First();
+
+            //for single arg aka Call(X[]) or Call(X)
+            if (argsToEnd.Length == 1)
+            {
+                return CanAssign(argsToEnd[0], method.Parameters[i].Type) || CanAssign(argsToEnd[0], elementType);
+            }
+
+            // for multiple args
+            foreach (var typeSymbol in argsToEnd)
+            {
+                if (!CanAssign(typeSymbol, elementType))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    private bool TryFindPath(ITypeSymbol type, StringMemberPath path, bool ignoreCase, ICollection<IMappableMember> foundPath)
     {
         foreach (var name in path.Path)
         {

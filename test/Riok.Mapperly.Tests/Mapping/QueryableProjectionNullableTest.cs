@@ -113,6 +113,27 @@ public class QueryableProjectionNullableTest
     }
 
     [Fact]
+    public Task NestedPropertyWithDeepCloneable()
+    {
+        // deep cloneable should be ignored.
+        // see https://github.com/riok/mapperly/issues/1710
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            public partial System.Linq.IQueryable<B> Map(System.Linq.IQueryable<A> source);
+
+            [MapNestedProperties("Nested")]
+            public partial B MapConfig(A source);
+            """,
+            TestSourceBuilderOptions.WithDeepCloning,
+            "class A { public C Nested { get; set; } }",
+            "class B { public string[] Value0 { get; set; } public string Value { get; set; } }",
+            "class C { public string[] Value0 { get; set; } public string Value { get; set; } }"
+        );
+
+        return TestHelper.VerifyGenerator(source, TestHelperOptions.DisabledNullable);
+    }
+
+    [Fact]
     public Task ClassToClassNullableSourcePathAutoFlattenString()
     {
         var source = TestSourceBuilder.Mapping(
@@ -177,6 +198,40 @@ public class QueryableProjectionNullableTest
             "System.Linq.IQueryable<B>",
             "public record A(string Value);",
             "public record B(string Value);"
+        );
+
+        return TestHelper.VerifyGenerator(source, TestHelperOptions.DisabledNullable);
+    }
+
+    [Fact]
+    public Task RecordToRecordMemberMappingDisabledNullableContext()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            public partial System.Linq.IQueryable<B> Map(System.Linq.IQueryable<A> q);
+
+            [MapProperty(nameof(A.Value), nameof(B.OtherValue)]
+            private partial B Map(A source);
+            """,
+            "public record A(string Value);",
+            "public record B(string OtherValue);"
+        );
+
+        return TestHelper.VerifyGenerator(source, TestHelperOptions.DisabledNullable);
+    }
+
+    [Fact]
+    public Task ClassToClassMemberMappingDisabledNullableContext()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            public partial System.Linq.IQueryable<B> Map(System.Linq.IQueryable<A> q);
+
+            [MapProperty(nameof(A.Value), nameof(B.OtherValue)]
+            private partial B Map(A source);
+            """,
+            "public class A { public string Value {get; set;} }",
+            "public class B { public string OtherValue {get; set;} }"
         );
 
         return TestHelper.VerifyGenerator(source, TestHelperOptions.DisabledNullable);

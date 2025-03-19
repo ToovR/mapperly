@@ -4,9 +4,13 @@ using Riok.Mapperly.Descriptors.Mappings.ExistingTarget;
 
 namespace Riok.Mapperly.Descriptors.Mappings;
 
-public class NoOpMapping(ITypeSymbol sourceType, ITypeSymbol targetType) : MethodMapping(sourceType, targetType), IExistingTargetMapping
+public class NoOpMapping(ITypeSymbol sourceType, ITypeSymbol targetType) : IExistingTargetMapping
 {
-    public override IEnumerable<StatementSyntax> BuildBody(TypeMappingBuildContext ctx) => [];
+    public ITypeSymbol SourceType => sourceType;
+    public ITypeSymbol TargetType => targetType;
+    public bool IsSynthetic => true;
+
+    public IEnumerable<TypeMappingKey> BuildAdditionalMappingKeys(TypeMappingConfiguration config) => [];
 
     public IEnumerable<StatementSyntax> Build(TypeMappingBuildContext ctx, ExpressionSyntax target) => [];
 }

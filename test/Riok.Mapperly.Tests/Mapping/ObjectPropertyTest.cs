@@ -177,30 +177,45 @@ public class ObjectPropertyTest
     }
 
     [Fact]
-    public void WithManualMappedPropertyDuplicated()
+    public void WithManualMappedPropertyDuplicatedAndNullFilter()
     {
         var source = TestSourceBuilder.MapperWithBodyAndTypes(
             """
-            [MapProperty(nameof(A.StringValue), nameof(B.StringValue2)]
-            [MapProperty(nameof(A.StringValue), nameof(B.StringValue2)]
+            [MapProperty(nameof(A.StringValue1), nameof(B.StringValue)]
+            [MapProperty(nameof(A.StringValue2), nameof(B.StringValue)]
             partial B Map(A source);
             """,
-            "class A { public string StringValue { get; set; } }",
-            "class B { public string StringValue2 { get; set; } }"
+            TestSourceBuilderOptions.Default with
+            {
+                AllowNullPropertyAssignment = false,
+            },
+            "class A { public string? StringValue1 { get; set; } public string? StringValue2 { get; set; } }",
+            "class B { public string StringValue { get; set; } }"
         );
 
         TestHelper
             .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
             .HaveDiagnostic(
-                DiagnosticDescriptors.MultipleConfigurationsForTargetMember,
-                "Multiple mappings are configured for the same target member B.StringValue2"
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property StringValue1 of A to the target property StringValue of B which is not nullable"
+            )
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property StringValue2 of A to the target property StringValue of B which is not nullable"
             )
             .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new global::B();
-                target.StringValue2 = source.StringValue;
+                if (source.StringValue1 != null)
+                {
+                    target.StringValue = source.StringValue1;
+                }
+                if (source.StringValue2 != null)
+                {
+                    target.StringValue = source.StringValue2;
+                }
                 return target;
                 """
             );
@@ -360,6 +375,66 @@ public class ObjectPropertyTest
     }
 
     [Fact]
+    public void ShouldUseNotNullIfNotNullUserImplementedMapping()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            public partial B Map(A source);
+
+            [UserMapping(Default = true)]
+            [return: System.Diagnostics.CodeAnalysis.NotNullIfNotNull("source")]
+            private D? UserImplementedMap(C? source) => source == null ? null : new D();
+            """,
+            "class A { public string StringValue { get; set; } public C NestedValue { get; set; } }",
+            "class B { public string StringValue { get; set; } public D NestedValue { get; set; } }",
+            "class C;",
+            "class D;"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveMapMethodBody(
+                """
+                var target = new global::B();
+                target.StringValue = source.StringValue;
+                target.NestedValue = UserImplementedMap(source.NestedValue);
+                return target;
+                """
+            );
+    }
+
+    [Fact]
+    public void ShouldUseNotNullUserImplementedMapping()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            public partial B Map(A source);
+
+            [UserMapping(Default = true)]
+            [return: System.Diagnostics.CodeAnalysis.NotNull]
+            private D? UserImplementedMap(C? source) => new D();
+            """,
+            "class A { public string StringValue { get; set; } public C NestedValue { get; set; } }",
+            "class B { public string StringValue { get; set; } public D NestedValue { get; set; } }",
+            "class C;",
+            "class D;"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveMapMethodBody(
+                """
+                var target = new global::B();
+                target.StringValue = source.StringValue;
+                target.NestedValue = UserImplementedMap(source.NestedValue);
+                return target;
+                """
+            );
+    }
+
+    [Fact]
     public Task WithUnmappablePropertyShouldDiagnostic()
     {
         var source = TestSourceBuilder.Mapping(
@@ -370,6 +445,26 @@ public class ObjectPropertyTest
         );
 
         return TestHelper.VerifyGenerator(source);
+    }
+
+    [Fact]
+    public void NullableToNonNullablePropertyShouldDiagnostic()
+    {
+        var source = TestSourceBuilder.Mapping(
+            "A",
+            "B",
+            "class A { public string? StringValue { get; set; } }",
+            "class B { public string StringValue { get; set; } }"
+        );
+
+        TestHelper
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
+            .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property StringValue of A to the target property StringValue of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics();
     }
 
     [Fact]

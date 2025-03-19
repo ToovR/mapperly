@@ -65,6 +65,9 @@ public class MappingCollection
 
     public IExistingTargetMapping? FindExistingInstanceMapping(TypeMappingKey mappingKey) => _existingTargetMappings.Find(mappingKey);
 
+    public IExistingTargetMapping? FindExistingInstanceNamedMapping(string name, out bool ambiguousName) =>
+        _existingTargetMappings.FindNamed(name, out ambiguousName);
+
     public IEnumerable<(IMapping, MappingBuilderContext)> DequeueMappingsToBuildBody() => _mappingsToBuildBody.DequeueAll();
 
     public void EnqueueToBuildBody(ITypeMapping mapping, MappingBuilderContext ctx) => _mappingsToBuildBody.Enqueue((mapping, ctx));
@@ -129,6 +132,23 @@ public class MappingCollection
             $"Cannot add a named mapping ({name}, {mapping.Method.Name}) after the initial discovery which is a default mapping"
         );
         _newInstanceMappings.AddNamedUserMapping(name, mapping);
+    }
+
+    public void AddNamedExistingInstanceUserMappings(string name, IEnumerable<IExistingTargetUserMapping> mappings)
+    {
+        foreach (var mapping in mappings)
+        {
+            AddNamedExistingInstanceUserMapping(name, mapping);
+        }
+    }
+
+    public void AddNamedExistingInstanceUserMapping(string name, IExistingTargetUserMapping mapping)
+    {
+        Debug.Assert(
+            mapping.Default != true,
+            $"Cannot add a named mapping ({name}, {mapping.Method.Name}) after the initial discovery which is a default mapping"
+        );
+        _existingTargetMappings.AddNamedUserMapping(name, mapping);
     }
 
     private class MappingCollectionInstance<T, TUserMapping>
@@ -234,9 +254,11 @@ public class MappingCollection
         public MappingCollectionAddResult TryAddAsDefault(T mapping, TypeMappingConfiguration config)
         {
             var mappingKey = new TypeMappingKey(mapping, config);
-            return _defaultMappings.TryAdd(mappingKey, mapping)
+            var result = _defaultMappings.TryAdd(mappingKey, mapping)
                 ? MappingCollectionAddResult.Added
                 : MappingCollectionAddResult.NotAddedDuplicated;
+            AddAdditionalMappings(mapping, config);
+            return result;
         }
 
         public MappingCollectionAddResult AddUserMapping(TUserMapping mapping, bool? isDefault, string? name)
@@ -291,7 +313,16 @@ public class MappingCollection
 
             _duplicatedNonDefaultUserMappings.Remove(mappingKey);
             _defaultMappings[mappingKey] = mapping;
+            AddAdditionalMappings(mapping, TypeMappingConfiguration.Default);
             return MappingCollectionAddResult.Added;
+        }
+
+        private void AddAdditionalMappings(T mapping, TypeMappingConfiguration config)
+        {
+            foreach (var additionalKey in mapping.BuildAdditionalMappingKeys(config))
+            {
+                _defaultMappings.TryAdd(additionalKey, mapping);
+            }
         }
     }
 }

@@ -1,3 +1,5 @@
+using Riok.Mapperly.Diagnostics;
+
 namespace Riok.Mapperly.Tests.Mapping;
 
 public class ObjectPropertyExistingInstanceTest
@@ -43,6 +45,10 @@ public class ObjectPropertyExistingInstanceTest
         TestHelper
             .GenerateMapper(source, TestHelperOptions.AllowAndIncludeAllDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value2 of C to the target property Value2 of D which is not nullable"
+            )
             .HaveAssertedAllDiagnostics()
             .HaveMapMethodBody(
                 """
@@ -167,5 +173,28 @@ public class ObjectPropertyExistingInstanceTest
                 return target;
                 """
             );
+    }
+
+    [Fact]
+    public Task UnmappedRequiredPropertyShouldDiagnostic()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            "public partial void Update(A source, B target);",
+            """
+            public class A
+            {
+                public required string Value { get; set; }
+                public required string OtherValue { get; set; }
+            }
+            """,
+            """
+            public class B
+            {
+                public required string Value2 { get; set; }
+                public required string OtherValue { get; set; }
+            }
+            """
+        );
+        return TestHelper.VerifyGenerator(source);
     }
 }

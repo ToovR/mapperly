@@ -132,6 +132,7 @@ namespace Riok.Mapperly.Abstractions
         public Riok.Mapperly.Abstractions.MemberVisibility IncludedMembers { get; set; }
         public bool PreferParameterlessConstructors { get; set; }
         public Riok.Mapperly.Abstractions.PropertyNameMappingStrategy PropertyNameMappingStrategy { get; set; }
+        public Riok.Mapperly.Abstractions.RequiredMappingStrategy RequiredEnumMappingStrategy { get; set; }
         public Riok.Mapperly.Abstractions.RequiredMappingStrategy RequiredMappingStrategy { get; set; }
         public bool ThrowOnMappingNullMismatch { get; set; }
         public bool ThrowOnPropertyMappingNullMismatch { get; set; }
@@ -219,6 +220,8 @@ namespace Riok.Mapperly.Abstractions
         Memory = 16384,
         Tuple = 32768,
         EnumUnderlyingType = 65536,
+        ToTargetMethod = 131072,
+        StaticConvertMethods = 262144,
         All = -1,
     }
     [System.AttributeUsage(System.AttributeTargets.Parameter)]

@@ -6,8 +6,10 @@ namespace Riok.Mapperly.Tests.Mapping;
 
 public class ObjectNestedPropertyTest
 {
-    private static readonly TestHelperOptions _ignoreNestedMemberNotUsed =
-        new() { IgnoredDiagnostics = new HashSet<DiagnosticDescriptor> { DiagnosticDescriptors.NestedMemberNotUsed } };
+    private static readonly TestHelperOptions _ignoreNestedMemberNotUsed = new()
+    {
+        IgnoredDiagnostics = new HashSet<DiagnosticDescriptor> { DiagnosticDescriptors.NestedMemberNotUsed },
+    };
 
     [Fact]
     public void NestedPropertyWithMemberNameOfSource()
@@ -295,8 +297,13 @@ public class ObjectNestedPropertyTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value.Id of A to the target property Id of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new global::B();

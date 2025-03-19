@@ -53,6 +53,7 @@ such mappings have several limitations:
 - Enum mappings do not support the `ByName` strategy
 - Reference handling is not supported
 - Nullable reference types are disabled
+- Deep cloning is not applied
   :::
 
 ## Property configurations
@@ -92,7 +93,7 @@ public static partial class CarMapper
 
     // highlight-start
     private static string MapCarBrandName(CarBrand brand)
-      => band.Name;
+      => brand.Name;
     // highlight-end
 }
 ```

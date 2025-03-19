@@ -37,8 +37,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value of A to the target property Value of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new global::B();
@@ -66,8 +71,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value of A to the target property Value of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new global::B();
@@ -96,8 +106,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value of A to the target property Value of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new global::B();
@@ -125,8 +140,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value of A to the target property Value of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 var target = new global::B();
@@ -152,8 +172,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value of A to the target property Value of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveMapMethodBody(
                 """
                 var target = new global::B();
@@ -409,8 +434,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value of A to the target property Value of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveMapMethodBody(
                 """
                 var target = new global::B();
@@ -500,8 +530,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value of A to the target property Value of B which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveMapMethodBody(
                 """
                 var target = new global::B();
@@ -548,6 +583,81 @@ public class ObjectPropertyNullableTest
                 {
                     target.SubValue.Value = null;
                 }
+                return target;
+                """
+            );
+    }
+
+    [Fact]
+    public void NullableNestedMembersShouldInitializeWithNoNullAssignment()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            [MapProperty("NullableValue1", "V.NullableValue1")]
+            [MapProperty("NullableValue2", "V.NullableValue2")]
+            public partial B Map(A a)
+            """,
+            TestSourceBuilderOptions.Default with
+            {
+                AllowNullPropertyAssignment = false,
+            },
+            "class A { public int? NullableValue1 { get; set; } public int? NullableValue2 { get; set; } }",
+            "class B { public C? V { get; set; } }",
+            "class C { public int? NullableValue1 { get; set; } public int? NullableValue2 { get; set; } }"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveMapMethodBody(
+                """
+                var target = new global::B();
+                if (a.NullableValue1 != null)
+                {
+                    target.V ??= new global::C();
+                    target.V.NullableValue1 = a.NullableValue1.Value;
+                }
+                if (a.NullableValue2 != null)
+                {
+                    target.V ??= new global::C();
+                    target.V.NullableValue2 = a.NullableValue2.Value;
+                }
+                return target;
+                """
+            );
+    }
+
+    [Fact]
+    public void NullableNestedMembersShouldInitializeWithNoNullAssignmentOutsideContainer()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            [MapProperty("NullableValue1", "V.NullableValue1")]
+            [MapProperty("Value2", "V.Value2")]
+            public partial B Map(A a)
+            """,
+            TestSourceBuilderOptions.Default with
+            {
+                AllowNullPropertyAssignment = false,
+            },
+            "class A { public int? NullableValue1 { get; set; } public int Value2 { get; set; } }",
+            "class B { public C? V { get; set; } }",
+            "class C { public int? NullableValue1 { get; set; } public int? Value2 { get; set; } }"
+        );
+
+        TestHelper
+            .GenerateMapper(source)
+            .Should()
+            .HaveMapMethodBody(
+                """
+                var target = new global::B();
+                if (a.NullableValue1 != null)
+                {
+                    target.V ??= new global::C();
+                    target.V.NullableValue1 = a.NullableValue1.Value;
+                }
+                target.V ??= new global::C();
+                target.V.Value2 = a.Value2;
                 return target;
                 """
             );
@@ -617,6 +727,10 @@ public class ObjectPropertyNullableTest
             .HaveDiagnostic(
                 DiagnosticDescriptors.SourceMemberNotMapped,
                 "The member Flattened on the mapping source type C is not mapped to any member on the mapping target type D"
+            )
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Value.Flattened of A to the target property ValueFlattened of B which is not nullable"
             )
             .HaveAssertedAllDiagnostics()
             .HaveMapMethodBody(
@@ -718,8 +832,13 @@ public class ObjectPropertyNullableTest
         );
 
         TestHelper
-            .GenerateMapper(source)
+            .GenerateMapper(source, TestHelperOptions.AllowDiagnostics)
             .Should()
+            .HaveDiagnostic(
+                DiagnosticDescriptors.NullableSourceValueToNonNullableTargetValue,
+                "Mapping the nullable source property Test of TypeWithNullableProperty to the target property Test of NotNullableType which is not nullable"
+            )
+            .HaveAssertedAllDiagnostics()
             .HaveSingleMethodBody(
                 """
                 if (y == null)
@@ -898,5 +1017,34 @@ public class ObjectPropertyNullableTest
                 return target;
                 """
             );
+    }
+
+    [Fact]
+    public Task MixedNullableContextsWithDerivedTypesShouldWork()
+    {
+        var source = TestSourceBuilder.MapperWithBodyAndTypes(
+            """
+            [MapDerivedType<A, B>]
+            public partial BBase Map(ABase src);
+            """,
+            """
+            #nullable disable
+            public abstract record BBase
+            {
+                public List<BBase> Objects { get; init; } = [];
+            }
+
+            public record B : BBase;
+
+            #nullable enable
+            public abstract record ABase
+            {
+                public List<ABase> Objects { get; init; } = [];
+            }
+
+            public record A: ABase;
+            """
+        );
+        return TestHelper.VerifyGenerator(source);
     }
 }

@@ -24,9 +24,9 @@ public abstract class MembersMappingBuilderContext<T>(MappingBuilderContext buil
 
     public T Mapping { get; } = mapping;
 
-    public void AddDiagnostics()
+    public void AddDiagnostics(bool requiredMembersNeedToBeMapped)
     {
-        MemberMappingDiagnosticReporter.ReportDiagnostics(BuilderContext, _state);
+        MemberMappingDiagnosticReporter.ReportDiagnostics(BuilderContext, _state, requiredMembersNeedToBeMapped);
         _nestedMappingsContext.ReportDiagnostics();
     }
 
@@ -59,6 +59,8 @@ public abstract class MembersMappingBuilderContext<T>(MappingBuilderContext buil
             ConsumeMemberConfig(members.ValueConfiguration);
         }
     }
+
+    public bool HasDuplicatedMemberConfig(NonEmptyMemberPath targetMemberPath) => _state.HasDuplicatedMemberConfig(targetMemberPath);
 
     public void MappingAdded() => _state.MappingAdded();
 
